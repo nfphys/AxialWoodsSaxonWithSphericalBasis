@@ -1,0 +1,189 @@
+
+export test_make_single_particle_Hamiltonian, test_calc_single_particle_states, 
+plot_nilsson_diagram
+
+
+@with_kw struct QuantumNumbers @deftype Int64
+    Λ = 1; @assert isodd(Λ)
+    Π = 1; @assert Π === 1 || Π === -1
+end
+
+@with_kw struct SingleParticleStates
+    nstates::Int64
+    coeffs::Matrix{Float64}; @assert size(coeffs, 2) === nstates
+    spEs::Vector{Float64}; @assert length(spEs) === nstates 
+    qnums::Vector{QuantumNumbers}; @assert length(qnums) === nstates 
+    occ::Vector{Float64}; @assert length(occ) === nstates 
+end
+
+
+
+function make_single_particle_Hamiltonian(param, spbases, β, Λ, Π)
+    @unpack V₀, R₀, a, Nr, Δr, rs = param 
+    @unpack nbases, ψs, spEs, qnums = spbases 
+    
+    @assert isodd(Λ)
+    @assert Π === 1 || Π === -1
+    
+    Hmat = zeros(Float64, nbases, nbases)
+    
+    Vs = zeros(Float64, Nr)
+    @. Vs = (R₀/a)*V₀*exp((rs-R₀)/a)/(1+exp((rs-R₀)/a))^2
+    
+    n₂ = 0
+    for i₂ in 1:nbases
+        @views ψ₂ = ψs[:,i₂]
+        l₂ = qnums[i₂].l
+        j₂ = qnums[i₂].j
+        if j₂ < abs(Λ) || (-1)^l₂ ≠ Π
+            continue 
+        end
+        n₂ += 1
+        
+        Hmat[n₂, n₂] += spEs[i₂]
+        
+        n₁ = 0
+        for i₁ in 1:nbases
+            @views ψ₁ = ψs[:,i₁]
+            l₁ = qnums[i₁].l
+            j₁ = qnums[i₁].j
+            if j₁ < abs(Λ) || (-1)^l₁ ≠ Π
+                continue 
+            end
+            n₁ += 1
+            
+            # radial matrix element
+            M_rad = 0.0
+            for ir in 1:Nr
+                M_rad += ψ₁[ir]*Vs[ir]*ψ₂[ir]
+            end
+            M_rad *= Δr
+            
+            # angular matrix element 
+            M_ang = calc_angular_matrix_element(l₁,j₁,Λ,2,0,l₂,j₂,Λ)
+            
+            Hmat[n₁, n₂] += β*M_rad*M_ang
+        end
+    end
+    
+    return Symmetric(Hmat[1:n₂,1:n₂])
+end
+
+function test_make_single_particle_Hamiltonian(param; β=0.0, Λ=1, Π=1)
+    spbases = make_spbases(param)
+    @time Hmat = make_single_particle_Hamiltonian(param, spbases, β, Λ, Π)
+    @time eigvals(Hmat)
+end
+
+
+
+
+function calc_single_particle_states(param, spbases, β)
+    @unpack Λmax = param
+    @unpack nbases = spbases 
+    
+    nstates_max = nbases*2*cld(Λmax,2)
+    
+    coeffs = zeros(Float64, nbases, nstates_max)
+    spEs = zeros(Float64, nstates_max)
+    qnums = Vector{QuantumNumbers}(undef, nstates_max)
+    occ = zeros(Float64, nstates_max)
+    
+    nstates = 0
+    for Λ in 1:2:Λmax, Π in 1: -2: -1
+        qnum = QuantumNumbers(Λ=Λ, Π=Π)
+        
+        Hmat = make_single_particle_Hamiltonian(param, spbases, β, Λ, Π)
+        vals, vecs = eigen(Hmat)
+        
+        for ival in 1:length(vals)
+            nstates += 1
+            
+            n = 0
+            for ibasis in 1:nbases
+                @unpack l, j = spbases.qnums[ibasis]
+                if j < abs(Λ) || (-1)^l ≠ Π
+                    continue
+                end 
+                n += 1
+                
+                coeffs[ibasis, nstates] = vecs[n, ival]
+                spEs[nstates] = vals[ival]
+                qnums[nstates] = qnum
+            end
+            
+        end
+    end
+    p = sortperm(spEs[1:nstates])
+    
+    spstates = SingleParticleStates(nstates, 
+        coeffs[:,p], spEs[p], qnums[p], occ[p])
+end
+
+function calc_occ!(spstates, param)
+    @unpack N = param
+    @unpack nstates, occ = spstates
+    
+    fill!(occ, 0)
+    n = 0
+    for i in 1:nstates
+        if n + 2 ≤ N
+            occ[i] = 1
+            n += 2
+        elseif n < N
+            occ[i] = (N - n)/2
+            n = N
+        end
+    end
+    @assert n === N
+    return
+end
+
+function show_spstates(spstates; Emax=0.0)
+    @unpack nstates, spEs, qnums, occ = spstates 
+    println("")
+    for i in 1:nstates
+        if spEs[i] > Emax 
+            break 
+        end
+        println("i = ", i, ": ")
+        @show spEs[i] occ[i] qnums[i]
+    end
+end
+
+
+function test_calc_single_particle_states(param; β=0.0, Emax=0.0)
+    spbases = make_spbases(param)
+    @time spstates = calc_single_particle_states(param, spbases, β)
+    calc_occ!(spstates, param)
+    show_spstates(spstates; Emax=Emax)
+end
+
+
+
+function plot_nilsson_diagram(param; β_max=0.4, β_min=-0.4, Δβ=0.05)
+    @unpack Λmax = param
+
+    spbases = make_spbases(param)
+    @unpack nbases = spbases
+
+    βs = range(β_min, β_max; step=Δβ)
+    Nβ = length(βs)
+
+    spEss = zeros(Float64, nbases, Nβ)
+
+    p = plot(ylim=(-30,5), legend=false, 
+        xlabel="β", ylabel="single-particle energy [MeV]")
+
+    for Λ in 1:2:Λmax, Π in 1: -2: -1
+        spEss .= NaN
+        for iβ in 1:Nβ
+            β = βs[iβ]
+            Hmat = make_single_particle_Hamiltonian(param, spbases, β, Λ, Π)
+            vals = eigvals(Hmat)
+            spEss[1:length(vals), iβ] = vals
+        end
+        plot!(βs, spEss')
+    end
+    display(p)
+end
