@@ -1,3 +1,12 @@
+function factorial_half(n)
+    @assert n ≥ 0
+    s = 1.0
+    for i in 2:div(n, 2)
+        s *= i
+    end
+    return s
+end
+
 """
     clebsch(j₁, m₁, j₂, m₂, j, m)
 Calculate Clebsch-Gordan coefficients.
@@ -14,14 +23,7 @@ function clebsch(j₁, m₁, j₂, m₂, j, m)
     end
     
     # f(n) = (n/2)!
-    function f(n)
-        @assert n ≥ 0
-        s = 1.0
-        for i in 2:div(n, 2)
-            s *= i
-        end
-        return s
-    end
+    f = factorial_half
     
     con = (j+1)*f(j₁+j₂-j)*f(j₁-j₂+j)*f(-j₁+j₂+j) / f(j₁+j₂+j+2)
     con *= f(j₁+m₁)*f(j₁-m₁)*f(j₂+m₂)*f(j₂-m₂)*f(j+m)*f(j-m)

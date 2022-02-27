@@ -4,6 +4,7 @@ using Plots
 using LinearAlgebra
 using Parameters
 using Base.Threads
+using Memoize
 
 include("./basis.jl")
 include("./angular_momentum.jl")

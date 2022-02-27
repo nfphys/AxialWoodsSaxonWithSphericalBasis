@@ -11,6 +11,7 @@ end
 @with_kw struct SingleParticleStates
     nstates::Int64
     coeffs::Matrix{Float64}; @assert size(coeffs, 2) === nstates
+    ψs::Array{Float64, 3}; @assert size(ψs, 3) === nstates 
     spEs::Vector{Float64}; @assert length(spEs) === nstates 
     qnums::Vector{QuantumNumbers}; @assert length(qnums) === nstates 
     occ::Vector{Float64}; @assert length(occ) === nstates 
@@ -77,14 +78,29 @@ end
 
 
 
+function calc_n_lj(l,j) 
+    2l + (l===0) + (j===2l-1)
+end
+
+function test_calc_n_lj(lmax)
+    n = 0
+    for l in 0:lmax, j in 2l+1: -2: max(2l-1,0)
+        n += 1
+        n_lj = calc_n_lj(l,j)
+
+        println("")
+        @show n n_lj (n==n_lj)
+    end
+end
 
 function calc_single_particle_states(param, spbases, β)
-    @unpack Λmax = param
+    @unpack Nr, Δr, lmax, Λmax = param
     @unpack nbases = spbases 
     
     nstates_max = nbases*2*cld(Λmax,2)
     
     coeffs = zeros(Float64, nbases, nstates_max)
+    ψs = zeros(Float64, Nr, 2lmax+1, nstates_max)
     spEs = zeros(Float64, nstates_max)
     qnums = Vector{QuantumNumbers}(undef, nstates_max)
     occ = zeros(Float64, nstates_max)
@@ -99,25 +115,33 @@ function calc_single_particle_states(param, spbases, β)
         for ival in 1:length(vals)
             nstates += 1
             
-            n = 0
+            ibasis_active = 0
             for ibasis in 1:nbases
                 @unpack l, j = spbases.qnums[ibasis]
+                n_lj = calc_n_lj(l,j)
+
                 if j < abs(Λ) || (-1)^l ≠ Π
                     continue
                 end 
-                n += 1
+                ibasis_active += 1
                 
-                coeffs[ibasis, nstates] = vecs[n, ival]
+                coeffs[ibasis, nstates] = vecs[ibasis_active, ival]
+                @views @. ψs[:, n_lj, nstates] += spbases.ψs[:, ibasis]*coeffs[ibasis, nstates]
                 spEs[nstates] = vals[ival]
                 qnums[nstates] = qnum
             end
-            
         end
     end
     p = sortperm(spEs[1:nstates])
     
-    spstates = SingleParticleStates(nstates, 
-        coeffs[:,p], spEs[p], qnums[p], occ[p])
+    spstates = SingleParticleStates(
+        nstates=nstates, 
+        coeffs=coeffs[:,p], 
+        ψs=ψs[:,:,p],
+        spEs=spEs[p], 
+        qnums=qnums[p], 
+        occ=occ[p]
+    )
 end
 
 function calc_occ!(spstates, param)
@@ -151,12 +175,24 @@ function show_spstates(spstates; Emax=0.0)
     end
 end
 
+function plot_spstates(param, spstates, istate)
+    @unpack rs, lmax = param
+    @unpack ψs = spstates 
+    p = plot(xlabel="r [fm]", ylabel="ψ_lj")
+    for l in 0:lmax, j in 2l+1: -2: max(2l-1,0)
+        n_lj = calc_n_lj(l,j)
+        plot!(p, rs, ψs[:, n_lj, istate]; label="l=$l, j=$(j//2)")
+    end
+    display(p)
+end
 
-function test_calc_single_particle_states(param; β=0.0, Emax=0.0)
+
+function test_calc_single_particle_states(param; β=0.0, Emax=0.0, istate=1)
     spbases = make_spbases(param)
     @time spstates = calc_single_particle_states(param, spbases, β)
     calc_occ!(spstates, param)
     show_spstates(spstates; Emax=Emax)
+    plot_spstates(param, spstates, istate)
 end
 
 
