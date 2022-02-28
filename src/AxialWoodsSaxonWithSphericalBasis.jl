@@ -4,7 +4,8 @@ using Plots
 using LinearAlgebra
 using Parameters
 using Base.Threads
-using Memoize
+using KrylovKit
+using ProgressMeter
 
 include("./basis.jl")
 include("./angular_momentum.jl")
@@ -20,21 +21,29 @@ export PhysicalParam
     M = ħc^2/2mc²
     
     # particle number
-    Z::Int64 = 8; @assert iseven(Z) === true
-    N::Int64 = Z; @assert iseven(N) === true
+    Z::Int64 = 8; @assert iseven(Z) 
+    N::Int64 = Z; @assert iseven(N) 
     A::Int64 = Z + N; @assert A === Z + N
     
     # parameters of Woods-Saxon potential
-    V₀ = -42.86 # [MeV]
+    V₀ = -51+33(N-Z)/A # [MeV]
     r₀ = 1.27 # [fm]
     R₀ = r₀*A^(1/3) # [fm]
     a = 0.67 # [fm]
     κ = 0.44
+
     
     # model space
-    Emax = 30 # [MeV]
-    lmax::Int64 = 10 
+    Emax = 10 # [MeV]
+    lmax::Int64 = 5
     Λmax::Int64 = 2lmax+1; @assert isodd(Λmax)
+
+    # parameters of neutron-neutron interaction 
+    a_nn = -15.0 # [fm]
+    v₀_nn = 2π^2*ħc^2/mc² * 2a_nn/(π - 2a_nn*sqrt(mc²*Emax/ħc^2))
+    v_rho = -v₀_nn 
+    R_rho = r₀*A^(1/3)
+    a_rho = 0.67
     
     # radial mesh
     Nr::Int64 = 100
