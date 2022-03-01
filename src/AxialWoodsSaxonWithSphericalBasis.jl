@@ -10,6 +10,7 @@ using ProgressMeter
 include("./basis.jl")
 include("./angular_momentum.jl")
 include("./single_particle_states.jl")
+include("./legendre.jl")
 include("./three_body.jl")
 include("./wigner_matrix.jl")
 
@@ -21,9 +22,11 @@ export PhysicalParam
     M = ħc^2/2mc²
     
     # particle number
-    Z::Int64 = 8; @assert iseven(Z) 
-    N::Int64 = Z; @assert iseven(N) 
+    Z::Int64 = 6; @assert iseven(Z) 
+    N::Int64 = 14; @assert iseven(N) 
     A::Int64 = Z + N; @assert A === Z + N
+
+    #M = ħc^2/2mc²*(1 + 1/A)
     
     # parameters of Woods-Saxon potential
     V₀ = -51+33(N-Z)/A # [MeV]
@@ -31,7 +34,6 @@ export PhysicalParam
     R₀ = r₀*A^(1/3) # [fm]
     a = 0.67 # [fm]
     κ = 0.44
-
     
     # model space
     Emax = 10 # [MeV]

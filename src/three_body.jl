@@ -1,5 +1,6 @@
 
-export test_calc_Vnn_matrix_element, test_make_three_body_Hamiltonian
+export test_calc_Vnn_matrix_element, test_make_three_body_Hamiltonian, 
+calc_three_body_ground_state
 
 
 
@@ -132,6 +133,9 @@ end
 
 
 function make_three_body_Hamiltonian(param, spstates, Λ, Π)
+    @assert iseven(Λ)
+    @assert Π === +1 || Π === -1 
+    
     @unpack Nr, rs, Δr, Emax, lmax = param
     num_lj = 2lmax+1
 
@@ -178,7 +182,7 @@ function make_three_body_Hamiltonian(param, spstates, Λ, Π)
     
     Hmat_3body = zeros(Float64, dim, dim)
 
-    prog = Progress(dim,1)
+    prog = Progress(div(dim*(dim+1),2), 1, "Making three-body Hamiltonian...")
 
     n₃₄ = 0
     for n₄ in 1:2nstates
@@ -214,8 +218,116 @@ function make_three_body_Hamiltonian(param, spstates, Λ, Π)
 
             Hmat_3body[n₃₄, n₃₄] += spEs[i₃] + spEs[i₄]
 
-            # show progress
-            next!(prog)
+            n₁₂ = 0
+            for n₂ in 1:2nstates 
+                i₂ = cld(n₂, 2)
+                if occ[i₂] == 1.0
+                    continue 
+                end 
+
+                spE₂ = spEs[i₂]
+                Λ₂ = qnums[i₂].Λ
+                Π₂ = qnums[i₂].Π
+                if iseven(n₂)
+                    Λ₂ = -Λ₂
+                end
+
+
+                for n₁ in 1:n₂-1 # n₁ < n₂
+                    i₁ = cld(n₁, 2)
+                    if occ[i₁] == 1.0
+                        continue
+                    end
+
+                    spE₁ = spEs[i₁]
+                    Λ₁ = qnums[i₁].Λ
+                    Π₁ = qnums[i₁].Π
+                    if iseven(n₁)
+                        Λ₁ = -Λ₁
+                    end
+
+                    if Λ ≠ Λ₁ + Λ₂ || Π ≠ Π₁*Π₂ || spE₁ + spE₂ > Emax
+                        continue 
+                    end
+                    n₁₂ += 1
+
+                    if n₁₂ > n₃₄ # n₁₂ < n₃₄
+                        continue 
+                    end
+
+                    # show progress
+                    next!(prog)
+
+                    Hmat_3body[n₁₂, n₃₄] += 
+                        calc_Vnn_matrix_element(param, spstates, n₁, n₂, n₃, n₄)
+
+                    Hmat_3body[n₁₂, n₃₄] -=
+                        calc_Vnn_matrix_element(param, spstates, n₁, n₂, n₄, n₃)
+
+                end
+            end
+        end
+    end
+
+    return Symmetric(Hmat_3body)
+end
+
+function test_make_three_body_Hamiltonian(param; β=0.0, Λ=0, Π=1, howmany=1)
+    spbases = make_spbases(param)
+    spstates = calc_single_particle_states(param, spbases, β)
+    calc_occ!(spstates, param)
+
+    show_spstates(spstates)
+
+    Hmat_3body = make_three_body_Hamiltonian(param, spstates, Λ, Π)
+
+    @time Emin = eigmin(Hmat_3body)
+    @time Es, coeffs, info = eigsolve(Hmat_3body, howmany, :SR, eltype(Hmat_3body))
+    @show Emin Es
+    return info
+end
+
+
+
+
+
+function calc_two_body_density(param, spstates, coeff, r, φ₁₂)
+    @unpack Nr, Δr, rs = param 
+
+    @unpack nstates, ψs, qnums, occ = spstates 
+
+    n₃₄ = 0
+    for n₄ in 1:2nstates
+        i₄ = cld(n₄, 2)
+        if occ[i₄] == 1.0
+            continue 
+        end
+
+        spE₄ = spEs[i₄]
+        Λ₄ = qnums[i₄].Λ
+        Π₄ = qnums[i₄].Π
+        if iseven(n₄)
+            Λ₄ = -Λ₄
+        end
+
+        for n₃ in 1:n₄-1 # n₃ < n₄
+            i₃ = cld(n₃, 2)
+            if occ[i₃] == 1.0
+                continue 
+            end
+
+            spE₃ = spEs[i₃]
+            Λ₃ = qnums[i₃].Λ
+            Π₃ = qnums[i₃].Π
+            if iseven(n₃)
+                Λ₃ = -Λ₃
+            end
+
+            if Λ ≠ Λ₃ + Λ₄ || Π ≠ Π₃*Π₄ || spE₃ + spE₄ > Emax 
+                continue 
+            end
+            n₃₄ += 1
+
 
             n₁₂ = 0
             for n₂ in 1:2nstates 
@@ -250,26 +362,37 @@ function make_three_body_Hamiltonian(param, spstates, Λ, Π)
                     end
                     n₁₂ += 1
 
-                    Hmat_3body[n₁₂, n₃₄] += 
-                        calc_Vnn_matrix_element(param, spstates, n₁, n₂, n₃, n₄)
+                    if n₂ ≠ n₄ 
+                        continue 
+                    end
+
 
                 end
             end
         end
     end
-
-    return Hmat_3body
 end
 
-function test_make_three_body_Hamiltonian(param; β=0.0, Λ=0, Π=1)
+
+
+
+
+function calc_three_body_ground_state(param; β=0.0)
+    @unpack Nr, Δr, rs = param 
+
     spbases = make_spbases(param)
     spstates = calc_single_particle_states(param, spbases, β)
     calc_occ!(spstates, param)
+    @unpack nstates, ψs, qnums, occ = spstates 
 
-    show_spstates(spstates)
-
+    Λ = 0
+    Π = 1
     Hmat_3body = make_three_body_Hamiltonian(param, spstates, Λ, Π)
 
-    @show eigmin(Hmat_3body)
-    return 
+    @time vals, vecs, info = eigsolve(Hmat_3body, 1, :SR, eltype(Hmat_3body))
+    E = vals[1]
+    coeff = vecs[:, 1]
+
+
+
 end

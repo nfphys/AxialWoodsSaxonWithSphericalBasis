@@ -1,3 +1,5 @@
+export test_clebsch_ls
+
 function factorial_half(n)
     @assert n ≥ 0
     s = 1.0
@@ -36,6 +38,72 @@ function clebsch(j₁, m₁, j₂, m₂, j, m)
     
     return con*sum
 end
+
+"""
+    clebsch_ls(l, j, m, ms)
+Calculate (l, m-ms, 1/2, ms | j, m).
+All spins other than l are expressed as double their actual values.
+"""
+function clebsch_ls(l, j, m, ms)
+    @assert j === 2l + 1 || j === 2l - 1
+    @assert abs(m) ≤ j && iseven(j - m)
+    @assert ms === 1 || ms === -1
+    @assert abs(m-ms) ≤ 2l
+
+    if j === 2l + 1
+        if ms === +1
+            return sqrt((j+m)/2j)
+        end
+        if ms === -1
+            return sqrt((j-m)/2j)
+        end
+    end
+
+    if j === 2l - 1 
+        if ms === +1
+            return -sqrt((j+2-m)/2(j+2))
+        end
+        if ms === -1
+            return +sqrt((j+2+m)/2(j+2))
+        end
+    end
+end
+
+
+function test_clebsch_ls(lmax)
+    for l in 0:lmax, j in 2l+1: -2: max(2l-1, 0), m in j: -2: -j
+        for ms in 1: -2: -1
+            if abs(m-ms) > j
+                continue 
+            end 
+            error = clebsch(2l, m-ms, 1, ms, j, m) - clebsch_ls(l, j, m, ms)
+            #println("")
+            #@show l, j, m, ms
+            #@show error
+        end
+    end
+
+    @time for l in 0:lmax, j in 2l+1: -2: max(2l-1, 0), m in j: -2: -j
+        for ms in 1: -2: -1
+            if abs(m-ms) > j
+                continue 
+            end 
+            clebsch(2l, m-ms, 1, ms, j, m)
+        end
+    end
+
+    @time for l in 0:lmax, j in 2l+1: -2: max(2l-1, 0), m in j: -2: -j
+        for ms in 1: -2: -1
+            if abs(m-ms) > j
+                continue 
+            end 
+            clebsch_ls(l, j, m, ms)
+        end
+    end
+end
+
+
+
 
 """
     wigner3j(j₁, j₂, j₃, m₁, m₂, m₃)
