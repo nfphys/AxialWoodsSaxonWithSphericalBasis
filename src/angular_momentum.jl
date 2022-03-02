@@ -39,6 +39,48 @@ function clebsch(j₁, m₁, j₂, m₂, j, m)
     return con*sum
 end
 
+
+
+
+"""
+    wigner3j(j₁, j₂, j₃, m₁, m₂, m₃)
+Calculate wigner 3j symbol.
+All spins are expressed as double their actual values.
+"""
+function wigner3j(j₁, j₂, j₃, m₁, m₂, m₃)
+    return (-1)^div(j₁-j₂-m₃,2)/sqrt(j₃+1)*clebsch(j₁, m₁, j₂, m₂, j₃, -m₃)
+end
+
+
+"""
+    calc_angular_matrix_element(l, j, m, λ, μ, lp, jp, mp)
+
+l, lp, λ, μ: actual values
+j, m, jp, mp: double their actual values
+"""
+function calc_angular_matrix_element(l, j, m, λ, μ, lp, jp, mp)
+    if isodd(l+lp+λ)
+        return 0.0
+    end
+    
+    M = 1/sqrt(2λ+1) * clebsch(j,m,jp,-mp,2λ,2μ) * 
+        sqrt((j+1)*(jp+1)*(2λ+1)/4π) * wigner3j(j,2λ,jp,1,0,-1)
+        
+    
+    if isodd(div(j+m,2)+1)
+        M *= -1
+    end
+    
+    if isodd(div(j+1,2))
+        M *= -1
+    end
+    
+    return M
+end
+
+
+
+
 """
     clebsch_ls(l, j, m, ms)
 Calculate (l, m-ms, 1/2, ms | j, m).
@@ -100,44 +142,5 @@ function test_clebsch_ls(lmax)
             clebsch_ls(l, j, m, ms)
         end
     end
-end
-
-
-
-
-"""
-    wigner3j(j₁, j₂, j₃, m₁, m₂, m₃)
-Calculate wigner 3j symbol.
-All spins are expressed as double their actual values.
-"""
-function wigner3j(j₁, j₂, j₃, m₁, m₂, m₃)
-    return (-1)^div(j₁-j₂-m₃,2)/sqrt(j₃+1)*clebsch(j₁, m₁, j₂, m₂, j₃, -m₃)
-end
-
-
-"""
-    calc_angular_matrix_element(l, j, m, λ, μ, lp, jp, mp)
-
-l, lp, λ, μ: actual values
-j, m, jp, mp: double their actual values
-"""
-function calc_angular_matrix_element(l, j, m, λ, μ, lp, jp, mp)
-    if isodd(l+lp+λ)
-        return 0.0
-    end
-    
-    M = 1/sqrt(2λ+1) * clebsch(j,m,jp,-mp,2λ,2μ) * 
-        sqrt((j+1)*(jp+1)*(2λ+1)/4π) * wigner3j(j,2λ,jp,1,0,-1)
-        
-    
-    if isodd(div(j+m,2)+1)
-        M *= -1
-    end
-    
-    if isodd(div(j+1,2))
-        M *= -1
-    end
-    
-    return M
 end
 

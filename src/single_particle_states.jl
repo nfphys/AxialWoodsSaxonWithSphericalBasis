@@ -192,7 +192,7 @@ function test_calc_single_particle_states(param; β=0.0, Emax=0.0, istate=1)
     @time spstates = calc_single_particle_states(param, spbases, β)
     calc_occ!(spstates, param)
     show_spstates(spstates; Emax=Emax)
-    #plot_spstates(param, spstates, istate)
+    plot_spstates(param, spstates, istate)
 end
 
 
