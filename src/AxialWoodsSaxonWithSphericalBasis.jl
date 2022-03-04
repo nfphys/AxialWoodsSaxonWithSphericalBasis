@@ -11,10 +11,11 @@ include("./basis.jl")
 include("./angular_momentum.jl")
 include("./single_particle_states.jl")
 include("./legendre.jl")
+include("./wigner_matrix.jl")
+
 include("./three_body_Hamiltonian.jl")
 include("./three_body_density.jl")
 include("./three_body.jl")
-include("./wigner_matrix.jl")
 
 export PhysicalParam
 

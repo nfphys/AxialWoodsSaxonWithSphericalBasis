@@ -187,7 +187,7 @@ function plot_spstates(param, spstates, istate)
 end
 
 
-function test_calc_single_particle_states(param; β=0.0, Emax=0.0, istate=1)
+function test_calc_single_particle_states(param; β=0.0, Emax=1.0, istate=1)
     spbases = make_spbases(param)
     @time spstates = calc_single_particle_states(param, spbases, β)
     calc_occ!(spstates, param)

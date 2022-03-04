@@ -10,28 +10,27 @@ function calc_Vnn_matrix_element(param, spstates, n₁, n₂, n₃, n₄)
     @. Vnn = v₀_nn + v_rho/(1 + exp((rs - R_rho)/a_rho))
 
     i₁ = cld(n₁,2)
-    i₂ = cld(n₂,2)
-    i₃ = cld(n₃,2)
-    i₄ = cld(n₄,2)
-
     Λ₁ = qnums[i₁].Λ
     Π₁ = qnums[i₁].Π
     if iseven(n₁)
         Λ₁ = -Λ₁
     end
 
+    i₂ = cld(n₂,2)
     Λ₂ = qnums[i₂].Λ
     Π₂ = qnums[i₂].Π
     if iseven(n₂)
         Λ₂ = -Λ₂
     end
 
+    i₃ = cld(n₃,2)
     Λ₃ = qnums[i₃].Λ
     Π₃ = qnums[i₃].Π
     if iseven(n₃)
         Λ₃ = -Λ₃
     end
 
+    i₄ = cld(n₄,2)
     Λ₄ = qnums[i₄].Λ
     Π₄ = qnums[i₄].Π
     if iseven(n₄)
@@ -197,7 +196,9 @@ function make_three_body_Hamiltonian(param, spstates, Λ, Π)
 
         end
     end
-    @show Emax lmax nstates dim
+    println("")
+    @show Emax, lmax, nstates
+    @show Λ, Π, dim
     
     Hmat_3body = zeros(Float64, dim, dim)
 
