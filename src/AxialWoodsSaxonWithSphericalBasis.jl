@@ -24,12 +24,15 @@ export PhysicalParam
     mc² = 938.
     M = ħc^2/2mc²
     
-    # particle number
+    # particle number of the core nucleus
     Z::Int64 = 6; @assert iseven(Z) 
     N::Int64 = 14; @assert iseven(N) 
     A::Int64 = Z + N; @assert A === Z + N
 
-    #M = ħc^2/2mc²*(1 + 1/A)
+    # radial mesh
+    Nr::Int64 = 100
+    Δr = 0.2
+    rs::T = range(Δr, Nr*Δr, length=Nr)
     
     # parameters of Woods-Saxon potential
     V₀ = -51+33(N-Z)/A # [MeV]
@@ -37,6 +40,7 @@ export PhysicalParam
     R₀ = r₀*A^(1/3) # [fm]
     a = 0.67 # [fm]
     κ = 0.44
+    Lmax_WS::Int64 = 10 
     
     # model space
     Emax = 5 # [MeV]
@@ -49,11 +53,6 @@ export PhysicalParam
     v_rho = -v₀_nn 
     R_rho = r₀*A^(1/3)
     a_rho = 0.67
-    
-    # radial mesh
-    Nr::Int64 = 100
-    Δr = 0.2
-    rs::T = range(Δr, Nr*Δr, length=Nr)
 end
 
 

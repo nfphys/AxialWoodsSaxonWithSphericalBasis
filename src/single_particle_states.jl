@@ -1,6 +1,6 @@
 
 export test_make_single_particle_Hamiltonian, test_calc_single_particle_states, 
-plot_nilsson_diagram
+plot_nilsson_diagram, plot_total_energy
 
 
 @with_kw struct QuantumNumbers @deftype Int64
@@ -20,7 +20,7 @@ end
 
 
 function make_single_particle_Hamiltonian(param, spbases, β, Λ, Π)
-    @unpack V₀, R₀, a, Nr, Δr, rs = param 
+    @unpack V₀, R₀, a, Lmax_WS, Nr, Δr, rs = param 
     @unpack nbases, ψs, spEs, qnums = spbases 
     
     @assert isodd(Λ)
@@ -30,6 +30,27 @@ function make_single_particle_Hamiltonian(param, spbases, β, Λ, Π)
     
     Vs = zeros(Float64, Nr)
     @. Vs = (R₀/a)*V₀*exp((rs-R₀)/a)/(1+exp((rs-R₀)/a))^2
+    
+    #=
+    Y(L,θ) = sqrt((2L+1)/4π) * legendre(L, 0, cos(θ)) # Y_LO(θ)
+
+    Vs = zeros(Float64, Nr, Lmax_WS+1)
+    θs = range(0, π, length=100+1); Nθ = length(θs); Δθ = θs[2]-θs[1]
+    #p = plot()
+    for L in 0:Lmax_WS
+        for ir in 1:Nr 
+            r = rs[ir]
+            for iθ in 1:Nθ
+                θ = θs[iθ]
+                R = R₀*(1 + β*Y(2, θ))
+                Vs[ir, 1+L] += sin(θ) * Y(L,θ) * V₀ / (1 + exp((r-R)/a))
+            end
+            Vs[ir, 1+L] *= 2π * Δθ 
+        end
+        #plot!(p, rs, Vs[:,1+L]; label="L=$L")
+    end
+    #display(p)
+    =#
     
     n₂ = 0
     for i₂ in 1:nbases
@@ -64,6 +85,22 @@ function make_single_particle_Hamiltonian(param, spbases, β, Λ, Π)
             M_ang = calc_angular_matrix_element(l₁,j₁,Λ,2,0,l₂,j₂,Λ)
             
             Hmat[n₁, n₂] += β*M_rad*M_ang
+
+            #=
+            for L in 1:Lmax_WS
+                # radial matrix element
+                M_rad = 0.0
+                for ir in 1:Nr
+                    M_rad += ψ₁[ir]*Vs[ir,1+L]*ψ₂[ir]
+                end
+                M_rad *= Δr
+                
+                # angular matrix element 
+                M_ang = calc_angular_matrix_element(l₁,j₁,Λ,L,0,l₂,j₂,Λ)
+                
+                Hmat[n₁, n₂] += M_rad * M_ang
+            end
+            =#
         end
     end
     
@@ -192,13 +229,13 @@ function test_calc_single_particle_states(param; β=0.0, Emax=1.0, istate=1)
     @time spstates = calc_single_particle_states(param, spbases, β)
     calc_occ!(spstates, param)
     show_spstates(spstates; Emax=Emax)
-    plot_spstates(param, spstates, istate)
+    #plot_spstates(param, spstates, istate)
 end
 
 
 
 function plot_nilsson_diagram(param; β_max=0.4, β_min=-0.4, Δβ=0.05)
-    @unpack Λmax = param
+    @unpack Z, N, Λmax = param
 
     spbases = make_spbases(param)
     @unpack nbases = spbases
@@ -208,8 +245,9 @@ function plot_nilsson_diagram(param; β_max=0.4, β_min=-0.4, Δβ=0.05)
 
     spEss = zeros(Float64, nbases, Nβ)
 
-    p = plot(ylim=(-30,5), legend=false, 
-        xlabel="β", ylabel="single-particle energy [MeV]")
+    p = plot(ylim=(-40,5), legend=false, 
+    xlabel="β", ylabel="single-particle energy [MeV]", 
+    title="nilsson diagram for Z=$Z, N=$N")
 
     for Λ in 1:2:Λmax, Π in 1: -2: -1
         spEss .= NaN
@@ -221,5 +259,35 @@ function plot_nilsson_diagram(param; β_max=0.4, β_min=-0.4, Δβ=0.05)
         end
         plot!(βs, spEss')
     end
+    display(p)
+end
+
+
+
+function plot_total_energy(param; β_max=0.4, β_min=-0.4, Δβ=0.05)
+    @unpack Z, N, Λmax = param
+
+    spbases = make_spbases(param)
+    @unpack nbases = spbases
+
+    βs = range(β_min, β_max; step=Δβ)
+    Nβ = length(βs)
+
+    Es_tot = zeros(Float64, Nβ)
+    for iβ in 1:Nβ 
+        β = βs[iβ]
+
+        spstates = calc_single_particle_states(param, spbases, β)
+        calc_occ!(spstates, param) 
+        @unpack nstates, spEs, occ = spstates 
+
+        for i in 1:nstates
+            Es_tot[iβ] += 2occ[i]*spEs[i]
+        end
+        Es_tot[iβ] /= N 
+    end
+    p = plot(ylim=(-30, 0), legend=false, 
+    xlabel="β", ylabel="total energy per nucleon [MeV]", title="Z=$Z, N=$N")
+    plot!(p, βs, Es_tot)
     display(p)
 end
