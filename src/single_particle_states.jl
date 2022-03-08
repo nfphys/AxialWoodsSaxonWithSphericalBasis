@@ -245,7 +245,7 @@ function plot_nilsson_diagram(param; β_max=0.4, β_min=-0.4, Δβ=0.05)
 
     spEss = zeros(Float64, nbases, Nβ)
 
-    p = plot(ylim=(-40,5), legend=false, 
+    p = plot(ylim=(-25,5), legend=false, 
     xlabel="β", ylabel="single-particle energy [MeV]", 
     title="nilsson diagram for Z=$Z, N=$N")
 
@@ -286,7 +286,7 @@ function plot_total_energy(param; β_max=0.4, β_min=-0.4, Δβ=0.05)
         end
         Es_tot[iβ] /= N 
     end
-    p = plot(ylim=(-30, 0), legend=false, 
+    p = plot(ylim=(-20, 0), legend=false, 
     xlabel="β", ylabel="total energy per nucleon [MeV]", title="Z=$Z, N=$N")
     plot!(p, βs, Es_tot)
     display(p)

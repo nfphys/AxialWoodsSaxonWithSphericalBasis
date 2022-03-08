@@ -41,7 +41,15 @@ function calc_dipole_matrix_element(param, spstates, n₁, n₂, M)
 
             ME_ang = calc_angular_matrix_element(l₁, j₁, Λ₁, 1, M, l₂, j₂, Λ₂)
             
-            ME_dipole += -(Z/A) * ME_rad * ME_ang 
+            phase = 1.0
+            if iseven(n₁) && isodd(div(j₁-Λ₁,2)) 
+                phase *= -1
+            end
+            if iseven(n₂) && isodd(div(j₂-Λ₂,2))
+                phase *= -1
+            end
+            
+            ME_dipole += -(Z/A) * phase * ME_rad * ME_ang 
         end
     end
     
@@ -132,23 +140,25 @@ function calc_BE1_strength(param, spstates, coeff_gs, coeff_excited, M)
                     end
                     n₁₂ += 1
 
+                    temp = coeff_excited[n₁₂] * coeff_gs[n₃₄]
+
                     if n₂ === n₄ 
-                        ME += coeff_excited[n₁₂] * coeff_gs[n₃₄] * 
+                        ME += temp * 
                         calc_dipole_matrix_element(param, spstates, n₁, n₃, M)
                     end
 
                     if n₁ === n₃ 
-                        ME += coeff_excited[n₁₂] * coeff_gs[n₃₄] *
+                        ME += temp *
                         calc_dipole_matrix_element(param, spstates, n₂, n₄, M)
                     end
 
                     if n₂ === n₃
-                        ME -= coeff_excited[n₁₂] * coeff_gs[n₃₄] * 
+                        ME -= temp * 
                         calc_dipole_matrix_element(param, spstates, n₁, n₄, M) 
                     end
 
                     if n₁ === n₄ 
-                        ME -= coeff_excited[n₁₂] * coeff_gs[n₃₄] *
+                        ME -= temp *
                         calc_dipole_matrix_element(param, spstates, n₂, n₃, M)
                     end
 
@@ -168,7 +178,9 @@ function calc_BE1_strength(param, spstates, coeff_gs, coeff_excited, M)
     return BE1
 end
 
-function test_calc_BE1_strength(param; β=0.0, howmany=20, Γ=0.2)
+function test_calc_BE1_strength(param; β=0.0, howmany=50, Γ=0.2, figname="test")
+    @unpack Emax, lmax = param 
+
     spbases = make_spbases(param)
     spstates = calc_single_particle_states(param, spbases, β)
     calc_occ!(spstates, param)
@@ -178,7 +190,7 @@ function test_calc_BE1_strength(param; β=0.0, howmany=20, Γ=0.2)
     # ground state
     Λ_gs = 0
     Π_gs = 1
-    Hmat_3body = make_three_body_Hamiltonian(param, spstates, Λ_gs, Π_gs)
+    Hmat_3body = make_three_body_Hamiltonian(param, spstates, β, Λ_gs, Π_gs)
     @time Es_gs, coeffs_gs, info_gs = eigsolve(Hmat_3body, 1, :SR, eltype(Hmat_3body))
     E_gs = Es_gs[1]
     coeff_gs = coeffs_gs[1]
@@ -186,13 +198,18 @@ function test_calc_BE1_strength(param; β=0.0, howmany=20, Γ=0.2)
 
     Es = range(0, 10.0, step=0.01)
     fs = zeros(Float64, length(Es))
-    p = plot(xlabel="E [MeV]", ylabel="B(E1)", title="β=$β  Γ=$Γ[MeV]")
+    p = plot(xlabel="E [MeV]", ylabel="B(E1)", 
+    title="Emax=$(Emax)[MeV]  lmax=$(lmax)  β=$β  Γ=$Γ[MeV]", ylim=(0, 1))
     for M in -1:1
         Λ_excited = 2M
         Π_excited = -1 
-        Hmat_3body = make_three_body_Hamiltonian(param, spstates, Λ_excited, Π_excited)
-        @time Es_excited, coeffs_excited, info_excited = eigsolve(Hmat_3body, howmany, :SR, eltype(Hmat_3body))
+        Hmat_3body = make_three_body_Hamiltonian(param, spstates, β, Λ_excited, Π_excited)
+        @time Es_excited, coeffs_excited, info_excited = 
+        eigsolve(Hmat_3body, howmany, :SR, eltype(Hmat_3body); krylovdim=100)
         @show Es_excited[1:2]
+
+        #println("")
+        #@show info_excited
 
         BE1s = zeros(Float64, length(Es_excited))
         @time for k in 1:length(Es_excited)
@@ -211,5 +228,6 @@ function test_calc_BE1_strength(param; β=0.0, howmany=20, Γ=0.2)
         @. fs += gs
     end
     plot!(p, Es, fs; label="total")
+    savefig("../Figure/" * figname * ".png")
     display(p)
 end
