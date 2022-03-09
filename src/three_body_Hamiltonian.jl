@@ -4,7 +4,7 @@ plot_ground_state_energy
 
 
 function calc_Vnn_matrix_element(param, spstates, β, n₁, n₂, n₃, n₄)
-    @unpack Nr, rs, Δr, lmax, v₀_nn, v_rho, R_rho, a_rho = param
+    @unpack Nr, rs, Δr, lmax, v₀_nn, v_rho, R_rho, a_rho, MEs_ang, MEs_ang2 = param
 
     @unpack nstates, ψs, qnums = spstates 
 
@@ -45,30 +45,38 @@ function calc_Vnn_matrix_element(param, spstates, β, n₁, n₂, n₃, n₄)
     if Λ₁+Λ₂ ≠ Λ₃+Λ₄ 
         return 0.0
     end
-    #M = div(Λ₃ - Λ₁, 2)
     M = div(Λ₁+Λ₂, 2)
 
     ME_Vnn = 0.0
-    for l₄ in 0:lmax, j₄ in 2l₄+1: -2: max(2l₄-1,0)
-        if j₄ < abs(Λ₄) || (-1)^l₄ ≠ Π₄
+
+    n₄_ljm = 0
+    for l₄ in 0:lmax, j₄ in 2l₄+1: -2: max(2l₄-1,0), m₄ in j₄: -2: -j₄
+        n₄_ljm += 1
+        if j₄ < abs(Λ₄) || (-1)^l₄ ≠ Π₄ || m₄ ≠ Λ₄
             continue 
         end
         n₄_lj = calc_n_lj(l₄, j₄)
 
-        for l₃ in 0:lmax, j₃ in 2l₃+1: -2: max(2l₃-1,0)
-            if j₃ < abs(Λ₃) || (-1)^l₃ ≠ Π₃
+        n₃_ljm = 0
+        for l₃ in 0:lmax, j₃ in 2l₃+1: -2: max(2l₃-1,0), m₃ in j₃: -2: -j₃
+            n₃_ljm += 1
+            if j₃ < abs(Λ₃) || (-1)^l₃ ≠ Π₃ || m₃ ≠ Λ₃
                 continue 
             end
             n₃_lj = calc_n_lj(l₃, j₃)
 
-            for l₂ in 0:lmax, j₂ in 2l₂+1: -2: max(2l₂-1,0)
-                if j₂ < abs(Λ₂) || (-1)^l₂ ≠ Π₂
+            n₂_ljm = 0
+            for l₂ in 0:lmax, j₂ in 2l₂+1: -2: max(2l₂-1,0), m₂ in j₂ : -2: -j₂
+                n₂_ljm += 1
+                if j₂ < abs(Λ₂) || (-1)^l₂ ≠ Π₂ || m₂ ≠ Λ₂
                     continue 
                 end
                 n₂_lj = calc_n_lj(l₂, j₂)
 
-                for l₁ in 0:lmax, j₁ in 2l₁+1: -2: max(2l₁-1,0)
-                    if j₁ < abs(Λ₁) || (-1)^l₁ ≠ Π₁
+                n₁_ljm = 0
+                for l₁ in 0:lmax, j₁ in 2l₁+1: -2: max(2l₁-1,0), m₁ in j₁ : -2: -j₁
+                    n₁_ljm += 1
+                    if j₁ < abs(Λ₁) || (-1)^l₁ ≠ Π₁ || m₁ ≠ Λ₁
                         continue 
                     end
                     n₁_lj = calc_n_lj(l₁, j₁)
@@ -99,20 +107,11 @@ function calc_Vnn_matrix_element(param, spstates, β, n₁, n₂, n₃, n₄)
                     ME_rad *= Δr
 
                     # angular matrix element (L=0)
-                    ME_ang = 0.0
-                    Jmin = max(div(abs(j₁-j₂),2), div(abs(j₃-j₄),2), abs(M))
-                    Jmax = min(div(j₁+j₂,2), div(j₃+j₄,2))
-                    for J in Jmin:Jmax 
-                        if isodd(l₁+l₂+J) || isodd(l₃+l₄+J)
-                            continue 
-                        end
-                        ME_ang += (-1)^(l₁+l₃) * sqrt((j₁+1)*(j₃+1))/4π *
-                        clebsch(j₁, 1, 2J, 0, j₂, 1) * clebsch(j₃, 1, 2J, 0, j₄, 1) * 
-                        clebsch(j₁, Λ₁, j₂, Λ₂, 2J, 2M) * clebsch(j₃, Λ₃, j₄, Λ₄, 2J, 2M)
-                    end
+                    ME_ang = MEs_ang[n₁_ljm, n₂_ljm, n₃_ljm, n₄_ljm]
 
                     ME_Vnn += phase*ME_rad*ME_ang
 
+                    
                     # radial matrix element (L=2)
                     ME_rad = 0.0
                     for ir in 1:Nr
@@ -125,29 +124,10 @@ function calc_Vnn_matrix_element(param, spstates, β, n₁, n₂, n₃, n₄)
                     ME_rad *= Δr
 
                     # angular matrix element (L=2)
-                    ME_ang = 0.0 
-                    for J₃₄ in max(div(abs(j₃-j₄),2), abs(M)) : div(j₃+j₄,2)
-                        if isodd(l₃+l₄+J₃₄) 
-                            continue 
-                        end
-                        for J₁₂ in max(div(abs(j₁-j₂),2), abs(M)) : div(j₁+j₂,2)
-                            if isodd(l₁+l₂+J₁₂)
-                                continue 
-                            end
-                            temp = sqrt((2J₁₂+1)*(2J₃₄+1)/20π) * 
-                            clebsch(2J₁₂,   0, 2J₃₄,  0, 2*2, 0) * 
-                            clebsch(2J₁₂, -2M, 2J₃₄, 2M, 2*2, 0)
-                            if isapprox(temp, 0.0; rtol=1e-10)
-                                continue 
-                            end
-
-                            ME_ang += (-1)^(l₁+l₃) * sqrt((j₁+1)*(j₃+1))/4π * temp * 
-                            clebsch(j₁, 1, 2J₁₂, 0, j₂, 1) * clebsch(j₃, 1, 2J₃₄, 0, j₄, 1) * 
-                            clebsch(j₁, Λ₁, j₂, Λ₂, 2J₁₂, 2M) * clebsch(j₃, Λ₃, j₄, Λ₄, 2J₃₄, 2M)
-                        end
-                    end
+                    ME_ang = MEs_ang2[n₁_ljm, n₂_ljm, n₃_ljm, n₄_ljm]
 
                     ME_Vnn += phase*ME_rad*ME_ang
+                    
                 end
             end
         end
@@ -158,7 +138,7 @@ function calc_Vnn_matrix_element(param, spstates, β, n₁, n₂, n₃, n₄)
 end
 
 function test_calc_Vnn_matrix_element(param; β=0.0, istate=1)
-    @unpack Emax, lmax = param 
+    @unpack Emax, lmax, Nr, rs, v₀_nn, v_rho, R_rho, a_rho = param 
 
     spbases = make_spbases(param)
     spstates = calc_single_particle_states(param, spbases, β)
@@ -168,7 +148,7 @@ function test_calc_Vnn_matrix_element(param; β=0.0, istate=1)
 
     n₁ = 2istate-1
     n₂ = 2istate
-    @time calc_Vnn_matrix_element(param, spstates, n₁, n₂, n₁, n₂)
+    @time calc_Vnn_matrix_element(param, spstates, β, n₁, n₂, n₁, n₂)
 end
 
 
