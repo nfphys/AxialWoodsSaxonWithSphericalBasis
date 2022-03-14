@@ -2,6 +2,7 @@ module AxialWoodsSaxonWithSphericalBasis
 
 using Plots
 using LinearAlgebra
+using SparseArrays
 using Parameters
 using Base.Threads
 using KrylovKit
@@ -31,10 +32,10 @@ export PhysicalParam, calc_MEs_ang
     A::Int64 = Z + N; @assert A === Z + N
 
     # radial mesh
-    Nr::Int64 = 40
-    Δr = 0.5
+    Nr::Int64 = 50
+    Δr = 0.4
     rs::T = range(Δr, Nr*Δr, length=Nr)
-    Jmax::Int64 = 5
+    Jmax::Int64 = 6
     
     # parameters of Woods-Saxon potential
     V₀ = -51+33(N-Z)/A # [MeV]
@@ -54,7 +55,7 @@ export PhysicalParam, calc_MEs_ang
     v₀_nn = 2π^2*ħc^2/mc² * 2a_nn/(π - 2a_nn*sqrt(mc²*Emax/ħc^2))
     v_rho = -v₀_nn 
     R_rho = r₀*A^(1/3)
-    a_rho = 0.67
+    a_rho = 0.67 
 
     # angular matrix elements 
     #MEs_ang::Array{Float64, 4} = calc_MEs_ang(lmax)

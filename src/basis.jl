@@ -1,4 +1,6 @@
 
+export test_make_spbases
+
 @with_kw struct BasisQuantumNumbers @deftype Int64
     l = 0
     j = 1
