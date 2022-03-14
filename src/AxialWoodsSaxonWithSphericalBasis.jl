@@ -16,6 +16,7 @@ include("./wigner_matrix.jl")
 include("./three_body_Hamiltonian.jl")
 include("./three_body_density.jl")
 include("./three_body.jl")
+include("./greens_function.jl")
 
 export PhysicalParam, calc_MEs_ang
 
@@ -30,9 +31,10 @@ export PhysicalParam, calc_MEs_ang
     A::Int64 = Z + N; @assert A === Z + N
 
     # radial mesh
-    Nr::Int64 = 100
-    Δr = 0.2
+    Nr::Int64 = 40
+    Δr = 0.5
     rs::T = range(Δr, Nr*Δr, length=Nr)
+    Jmax::Int64 = 5
     
     # parameters of Woods-Saxon potential
     V₀ = -51+33(N-Z)/A # [MeV]
@@ -55,8 +57,8 @@ export PhysicalParam, calc_MEs_ang
     a_rho = 0.67
 
     # angular matrix elements 
-    MEs_ang::Array{Float64, 4} = calc_MEs_ang(lmax)
-    MEs_ang2::Array{Float64, 4} = calc_MEs_ang2(lmax)
+    #MEs_ang::Array{Float64, 4} = calc_MEs_ang(lmax)
+    #MEs_ang2::Array{Float64, 4} = calc_MEs_ang2(lmax)
 end
 
 
@@ -160,7 +162,7 @@ function calc_MEs_ang2(lmax)
                             if isodd(l₁+l₂+J₁₂)
                                 continue 
                             end
-                            temp = sqrt((2J₁₂+1)*(2J₃₄+1)/20π) * 
+                            temp = (-1)^M * sqrt((2J₁₂+1)*(2J₃₄+1)/20π) * 
                             clebsch(2J₁₂,   0, 2J₃₄,  0, 2*2, 0) * 
                             clebsch(2J₁₂, -2M, 2J₃₄, 2M, 2*2, 0)
                             if isapprox(temp, 0.0; rtol=1e-10)
