@@ -146,11 +146,11 @@ function test_calc_two_particle_density(param; Λ=0, Π=1, β=0.0, σ₁=1, σ�
     @time for iφ in 1:Nφ, ir in 1:Nr 
         r = rs[ir]
         φ = φs[iφ]
-        ρ₂[ir, iφ] = 2π*r^2 * 4π*r^2 * sin(φ) *calc_two_particle_density(param, spstates, Λ, Π, coeff, ir, φ, σ₁, σ₂)
+        ρ₂[ir, iφ] = 2π*r^2 * 4π*r^2 * sin(φ) *
+        calc_two_particle_density(param, spstates, Λ, Π, coeff, ir, φ, σ₁, σ₂)
         next!(prog)
     end
 
-    #=
     ir = floor(Int, 5/Δr)
     p = plot(title="Emax=$(Emax)MeV  lmax=$(lmax)  β=$β", xlabel="φ/π", ylim=(0, 0.02))
     plot!(p, φs/π, ρ₂[ir,:]; label="ρ₂, r=$(rs[ir])fm")
@@ -161,7 +161,8 @@ function test_calc_two_particle_density(param; Λ=0, Π=1, β=0.0, σ₁=1, σ�
     plot!(p, rs, ρ₂[:,iφ]; label="ρ₂, φ=$(φs[iφ])")
     #plot!(p, rs, ρ₁; label="ρ₁")
     display(p)
-    =#
+
+    return
     
     p = plot(xlabel="r [fm]", ylabel="φ/π", xlim=(0,20), 
     title="Emax=$Emax, lmax=$lmax, β=$β")
