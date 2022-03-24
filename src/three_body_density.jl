@@ -6,7 +6,6 @@ function calc_uncorrelated_2pwf(param, spstates, n₁, n₂, ir, φ₁₂, σ₁
     @unpack Nr, rs, Δr, Emax, lmax = param
     @unpack nstates, ψs, spEs, qnums, occ = spstates 
 
-    #ir = floor(Int, r/Δr)
     @assert 1 ≤ ir ≤ Nr
     r = rs[ir]
 
@@ -46,10 +45,17 @@ function calc_uncorrelated_2pwf(param, spstates, n₁, n₂, ir, φ₁₂, σ₁
                 continue 
             end
 
-            ψ₂ += ψs[ir, n₁_lj, i₁]/rs[ir] * ψs[ir, n₂_lj, i₂]/rs[ir] * 
+            phase = 1.0
+            if iseven(n₁) && isodd(div(j₁-Λ₁,2)-l₁) 
+                phase *= -1
+            end
+            if iseven(n₂) && isodd(div(j₂-Λ₂,2)-l₂)
+                phase *= -1
+            end
+
+            ψ₂ += phase * ψs[ir, n₁_lj, i₁]/rs[ir] * ψs[ir, n₂_lj, i₂]/rs[ir] * 
             clebsch_ls(l₁, j₁, Λ₁, σ₁) * clebsch_ls(l₂, j₂, Λ₂, σ₂) *
             P(l₁, div(Λ₁-σ₁,2)) * P(l₂, div(Λ₂-σ₂,2)) * exp(im*div(Λ₁-σ₁,2)*φ₁₂)
-
         end
     end
 
@@ -61,17 +67,13 @@ function calc_two_particle_density(param, spstates, Λ, Π, coeff, ir, φ₁₂,
     @unpack Nr, rs, Δr, Emax, lmax = param
     @unpack nstates, ψs, spEs, qnums, occ = spstates 
 
-    #ir = floor(Int, r/Δr)
     @assert 1 ≤ ir ≤ Nr
     r = rs[ir]
-    #@show ir
-    #println("")
 
     dim = length(coeff)
+    #prog = Progress(dim, 1, "Calculating two-body density...")
 
     ψ₂ = 0.0 + 0.0im
-
-    #prog = Progress(dim, 1, "Calculating two-body density...")
 
     n₁₂ = 0
     for n₂ in 1:2nstates 
@@ -106,8 +108,8 @@ function calc_two_particle_density(param, spstates, Λ, Π, coeff, ir, φ₁₂,
             end
             n₁₂ += 1
 
-            ψ₂ += coeff[n₁₂] * calc_uncorrelated_2pwf(param, spstates, n₁, n₂, ir, φ₁₂, σ₁, σ₂)/√2
-            ψ₂ -= coeff[n₁₂] * calc_uncorrelated_2pwf(param, spstates, n₂, n₁, ir, φ₁₂, σ₁, σ₂)/√2
+            ψ₂ += coeff[n₁₂] * calc_uncorrelated_2pwf(param, spstates, n₁, n₂, ir,  φ₁₂, σ₁, σ₂)/√2
+            ψ₂ -= coeff[n₁₂] * calc_uncorrelated_2pwf(param, spstates, n₂, n₁, ir,  φ₁₂, σ₁, σ₂)/√2
 
             # show progress
             #next!(prog)
@@ -126,13 +128,11 @@ function test_calc_two_particle_density(param; Λ=0, Π=1, β=0.0, σ₁=1, σ�
     spstates = calc_single_particle_states(param, spbases, β)
     calc_occ!(spstates, param)
 
-    Hmat_3body = make_three_body_Hamiltonian(param, spstates, Λ, Π)
-
+    Hmat_3body = make_three_body_Hamiltonian(param, spstates, β, Λ, Π)
     @time Es, coeffs, info = eigsolve(Hmat_3body, 1, :SR, eltype(Hmat_3body))
     @show Es[1]
     coeff = coeffs[1]
     
-    #r = R₀
     φs = range(0, π, length=100+1)
     Nφ = length(φs)
 
@@ -146,27 +146,27 @@ function test_calc_two_particle_density(param; Λ=0, Π=1, β=0.0, σ₁=1, σ�
     @time for iφ in 1:Nφ, ir in 1:Nr 
         r = rs[ir]
         φ = φs[iφ]
-        ρ₂[ir, iφ] = 2π*r^2/ρ₁[ir]*calc_two_particle_density(param, spstates, Λ, Π, coeff, ir, φ, σ₁, σ₂)
+        ρ₂[ir, iφ] = 2π*r^2 * 4π*r^2 * sin(φ) *calc_two_particle_density(param, spstates, Λ, Π, coeff, ir, φ, σ₁, σ₂)
         next!(prog)
     end
-    
-    #f(φ) = calc_two_particle_density(param, spstates, Λ, Π, coeff, r, φ, σ₁, σ₂)
-    #@time ρ₂ = f.(φs)
 
-    κ = 30
-    iφ = 30
-    p = plot()
-    plot!(p, rs, ρ₂[:,iφ]*κ; label="ρ₂ * $κ, φ = $(φs[iφ])")
-    plot!(p, rs, ρ₁)
+    #=
+    ir = floor(Int, 5/Δr)
+    p = plot(title="Emax=$(Emax)MeV  lmax=$(lmax)  β=$β", xlabel="φ/π", ylim=(0, 0.02))
+    plot!(p, φs/π, ρ₂[ir,:]; label="ρ₂, r=$(rs[ir])fm")
     display(p)
 
-    
-    #=
-    p = plot(xlabel="r [fm]", ylabel="φ/π", xlim=(0,10), 
-    title="Emax=$Emax, lmax=$lmax, β=$β")
-    heatmap!(p, rs, φs, ρ₂')
+    iφ = 1
+    p = plot(title="Emax=$(Emax)MeV  lmax=$(lmax)  β=$β", xlabel="r [fm]")
+    plot!(p, rs, ρ₂[:,iφ]; label="ρ₂, φ=$(φs[iφ])")
+    #plot!(p, rs, ρ₁; label="ρ₁")
     display(p)
     =#
+    
+    p = plot(xlabel="r [fm]", ylabel="φ/π", xlim=(0,20), 
+    title="Emax=$Emax, lmax=$lmax, β=$β")
+    heatmap!(p, rs, φs/π, ρ₂')
+    display(p)
 end
 
 
@@ -273,11 +273,19 @@ function calc_single_particle_density(param, spstates, Λ, Π, coeff, ir, θ)
                                 end
                                 n₁_lj = calc_n_lj(l₁, j₁)
 
+                                phase = 1.0
+                                if iseven(n₁) && isodd(div(j₁-Λ₁,2)-l₁) 
+                                    phase *= -1
+                                end
+                                if iseven(n₃) && isodd(div(j₃-Λ₃,2)-l₃)
+                                    phase *= -1 
+                                end
+
                                 for σ in 1: -2: -1
                                     if abs(Λ₁-σ) > 2l₁ || abs(Λ₃-σ) > 2l₃
                                         continue 
                                     end
-                                    ρ₁ += coeff[n₁₂] * coeff[n₃₄] * 
+                                    ρ₁ += phase * coeff[n₁₂] * coeff[n₃₄] * 
                                     ψs[ir, n₁_lj, i₁]/rs[ir] * ψs[ir, n₃_lj, i₃]/rs[ir] * 
                                     clebsch_ls(l₁, j₁, Λ₁, σ) * 
                                     clebsch_ls(l₃, j₃, Λ₃, σ) *
@@ -301,11 +309,19 @@ function calc_single_particle_density(param, spstates, Λ, Π, coeff, ir, θ)
                                 end
                                 n₁_lj = calc_n_lj(l₁, j₁)
 
+                                phase = 1.0
+                                if iseven(n₁) && isodd(div(j₁-Λ₁,2)-l₁) 
+                                    phase *= -1
+                                end
+                                if iseven(n₄) && isodd(div(j₄-Λ₄,2)-l₄)
+                                    phase *= -1 
+                                end
+
                                 for σ in 1: -2: -1
                                     if abs(Λ₁-σ) > 2l₁ || abs(Λ₄-σ) > 2l₄
                                         continue 
                                     end
-                                    ρ₁ -= coeff[n₁₂] * coeff[n₃₄] * 
+                                    ρ₁ -= phase * coeff[n₁₂] * coeff[n₃₄] * 
                                     ψs[ir, n₁_lj, i₁]/rs[ir] * ψs[ir, n₄_lj, i₄]/rs[ir] * 
                                     clebsch_ls(l₁, j₁, Λ₁, σ) * 
                                     clebsch_ls(l₄, j₄, Λ₄, σ) *
@@ -333,7 +349,7 @@ function test_calc_single_particle_density(param; Λ=0, Π=1, β=0.0, θ=0.0)
     calc_occ!(spstates, param)
     show_spstates(spstates)
 
-    Hmat_3body = make_three_body_Hamiltonian(param, spstates, Λ, Π)
+    Hmat_3body = make_three_body_Hamiltonian(param, spstates, β, Λ, Π)
 
     @time Es, coeffs, info = eigsolve(Hmat_3body, 1, :SR, eltype(Hmat_3body))
     @show Es[1]

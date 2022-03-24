@@ -32,18 +32,19 @@ export PhysicalParam, calc_MEs_ang
     A::Int64 = Z + N; @assert A === Z + N
 
     # radial mesh
-    Nr::Int64 = 50
-    Δr = 0.4
+    Nr::Int64 = 100
+    Δr = 0.2
     rs::T = range(Δr, Nr*Δr, length=Nr)
     Jmax::Int64 = 6
     
     # parameters of Woods-Saxon potential
-    V₀ = -51+33(N-Z)/A # [MeV]
-    r₀ = 1.27 # [fm]
+    V₀ = -38.76*0.963 # [MeV]
+    V₁ = -25.63*0.963
+    r₀ = 1.25 # [fm]
     R₀ = r₀*A^(1/3) # [fm]
-    a = 0.67 # [fm]
-    κ = 0.44
-    Lmax_WS::Int64 = 10 
+    a = 0.65 # [fm]
+    #κ = 0.44
+    #Lmax_WS::Int64 = 10 
     
     # model space
     Emax = 5 # [MeV]
@@ -58,8 +59,8 @@ export PhysicalParam, calc_MEs_ang
     a_rho = 0.67 
 
     # angular matrix elements 
-    #MEs_ang::Array{Float64, 4} = calc_MEs_ang(lmax)
-    #MEs_ang2::Array{Float64, 4} = calc_MEs_ang2(lmax)
+    MEs_ang::Array{Float64, 4} = calc_MEs_ang(lmax)
+    MEs_ang2::Array{Float64, 4} = calc_MEs_ang2(lmax)
 end
 
 

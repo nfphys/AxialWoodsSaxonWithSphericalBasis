@@ -47,7 +47,7 @@ function calc_Vnn_matrix_element(param, spstates, β, n₁, n₂, n₃, n₄)
     end
     M = div(Λ₁+Λ₂, 2)
 
-    ME_Vnn = 0.0
+    ME_Vnn = 0.0 # matrix element of Vnn 
 
     n₄_ljm = 0
     for l₄ in 0:lmax, j₄ in 2l₄+1: -2: max(2l₄-1,0), m₄ in j₄: -2: -j₄
@@ -82,16 +82,16 @@ function calc_Vnn_matrix_element(param, spstates, β, n₁, n₂, n₃, n₄)
                     n₁_lj = calc_n_lj(l₁, j₁)
 
                     phase = 1.0
-                    if iseven(n₁) && isodd(div(j₁-Λ₁,2)) 
+                    if iseven(n₁) && isodd(div(j₁-Λ₁,2)-l₁) 
                         phase *= -1
                     end
-                    if iseven(n₂) && isodd(div(j₂-Λ₂,2))
+                    if iseven(n₂) && isodd(div(j₂-Λ₂,2)-l₂)
                         phase *= -1
                     end
-                    if iseven(n₃) && isodd(div(j₃-Λ₃,2))
+                    if iseven(n₃) && isodd(div(j₃-Λ₃,2)-l₃)
                         phase *= -1 
                     end
-                    if iseven(n₄) && isodd(div(j₄-Λ₄,2))
+                    if iseven(n₄) && isodd(div(j₄-Λ₄,2)-l₄)
                         phase *= -1 
                     end
 
@@ -333,7 +333,7 @@ function plot_ground_state_energy(param; β_max=0.2, β_min=-0.2, Δβ=0.02)
         Es, coeffs, info = eigsolve(Hmat_3body, 1, :SR, eltype(Hmat_3body))
         Es_gs[iβ] = Es[1]
     end
-    p = plot(ylim=(-5, 0), legend=false, 
+    p = plot(ylim=(-1, 0), legend=false, 
     xlabel="β", ylabel="ground-state energy [MeV]", 
     title="Z=$Z  N=$N  Emax=$(Emax)[MeV]  lmax=$(lmax)")
     plot!(p, βs, Es_gs)

@@ -20,7 +20,7 @@ end
 
 
 function make_single_particle_Hamiltonian(param, spbases, β, Λ, Π)
-    @unpack V₀, R₀, a, Lmax_WS, Nr, Δr, rs = param 
+    @unpack V₀, R₀, a, Nr, Δr, rs = param 
     @unpack nbases, ψs, spEs, qnums = spbases 
     
     @assert isodd(Λ)
@@ -200,11 +200,11 @@ function calc_occ!(spstates, param)
     return
 end
 
-function show_spstates(spstates; Emax=0.0)
+function show_spstates(spstates; Emax_show=0.0)
     @unpack nstates, spEs, qnums, occ = spstates 
     println("")
     for i in 1:nstates
-        if spEs[i] > Emax 
+        if spEs[i] > Emax_show 
             break 
         end
         println("i = ", i, ": ")
@@ -224,11 +224,11 @@ function plot_spstates(param, spstates, istate)
 end
 
 
-function test_calc_single_particle_states(param; β=0.0, Emax=0.0, istate=1)
+function test_calc_single_particle_states(param; β=0.0, Emax_show=1.0, istate=1)
     spbases = make_spbases(param)
     @time spstates = calc_single_particle_states(param, spbases, β)
     calc_occ!(spstates, param)
-    show_spstates(spstates; Emax=Emax)
+    show_spstates(spstates; Emax_show=Emax_show)
     #plot_spstates(param, spstates, istate)
 end
 
