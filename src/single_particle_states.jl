@@ -31,27 +31,6 @@ function make_single_particle_Hamiltonian(param, spbases, β, Λ, Π)
     Vs = zeros(Float64, Nr)
     @. Vs = (R₀/a)*V₀*exp((rs-R₀)/a)/(1+exp((rs-R₀)/a))^2
     
-    #=
-    Y(L,θ) = sqrt((2L+1)/4π) * legendre(L, 0, cos(θ)) # Y_LO(θ)
-
-    Vs = zeros(Float64, Nr, Lmax_WS+1)
-    θs = range(0, π, length=100+1); Nθ = length(θs); Δθ = θs[2]-θs[1]
-    #p = plot()
-    for L in 0:Lmax_WS
-        for ir in 1:Nr 
-            r = rs[ir]
-            for iθ in 1:Nθ
-                θ = θs[iθ]
-                R = R₀*(1 + β*Y(2, θ))
-                Vs[ir, 1+L] += sin(θ) * Y(L,θ) * V₀ / (1 + exp((r-R)/a))
-            end
-            Vs[ir, 1+L] *= 2π * Δθ 
-        end
-        #plot!(p, rs, Vs[:,1+L]; label="L=$L")
-    end
-    #display(p)
-    =#
-    
     n₂ = 0
     for i₂ in 1:nbases
         @views ψ₂ = ψs[:,i₂]
@@ -85,22 +64,6 @@ function make_single_particle_Hamiltonian(param, spbases, β, Λ, Π)
             M_ang = calc_angular_matrix_element(l₁,j₁,Λ,2,0,l₂,j₂,Λ)
             
             Hmat[n₁, n₂] += β*M_rad*M_ang
-
-            #=
-            for L in 1:Lmax_WS
-                # radial matrix element
-                M_rad = 0.0
-                for ir in 1:Nr
-                    M_rad += ψ₁[ir]*Vs[ir,1+L]*ψ₂[ir]
-                end
-                M_rad *= Δr
-                
-                # angular matrix element 
-                M_ang = calc_angular_matrix_element(l₁,j₁,Λ,L,0,l₂,j₂,Λ)
-                
-                Hmat[n₁, n₂] += M_rad * M_ang
-            end
-            =#
         end
     end
     
@@ -263,7 +226,7 @@ function plot_nilsson_diagram(param; β_max=0.4, β_min=-0.4, Δβ=0.05)
 end
 
 
-
+#=
 function plot_total_energy(param; β_max=0.4, β_min=-0.4, Δβ=0.05)
     @unpack Z, N, Λmax = param
 
@@ -290,4 +253,25 @@ function plot_total_energy(param; β_max=0.4, β_min=-0.4, Δβ=0.05)
     xlabel="β", ylabel="total energy per nucleon [MeV]", title="Z=$Z, N=$N")
     plot!(p, βs, Es_tot)
     display(p)
+end
+=#
+
+
+
+
+function calc_single_particle_potential!(Vs, param, qnum)
+    @unpack M, Nr, Δr, rs, V₀, V₁, r₀, R₀, a, V_gaus, μ_gaus, lmax = param 
+    @unpack Λ, Π = qnum 
+
+    fill!(Vs, 0.0)
+
+    for l₂ in 0:lmax, j₂ in 2l₂+1: -2: max(2l₂-1,0)
+        n₂_lj = calc_n_lj(l₂, j₂)
+
+        for l₁ in 0:lmax, j₁ in 2l₁+1: -2: max(2l₁-1,0)
+            n₁_lj = calc_n_lj(l₁, j₁)
+
+            
+        end
+    end
 end

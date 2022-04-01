@@ -161,8 +161,6 @@ function test_calc_two_particle_density(param; Λ=0, Π=1, β=0.0, σ₁=1, σ�
     plot!(p, rs, ρ₂[:,iφ]; label="ρ₂, φ=$(φs[iφ])")
     #plot!(p, rs, ρ₁; label="ρ₁")
     display(p)
-
-    return
     
     p = plot(xlabel="r [fm]", ylabel="φ/π", xlim=(0,20), 
     title="Emax=$Emax, lmax=$lmax, β=$β")

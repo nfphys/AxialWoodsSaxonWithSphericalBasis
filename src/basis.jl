@@ -20,7 +20,7 @@ end
 Make Hamiltonian for single-particle bases.
 """
 function make_basis_Hamiltonian(param, qnum)
-    @unpack M, Nr, Δr, rs, V₀, V₁, r₀, R₀, a = param
+    @unpack M, Nr, Δr, rs, V₀, V₁, r₀, R₀, a, V_gaus, μ_gaus = param
     @unpack l, j = qnum
     
     # potential
@@ -33,10 +33,8 @@ function make_basis_Hamiltonian(param, qnum)
     ls = (j*(j+2) - 4l*(l+1) - 3)/8
     @. Vs += V₁*ls*(r₀*r₀/(a*rs))*exp((rs-R₀)/a)/(1 + exp((rs-R₀)/a))^2
 
-    # gaussian potential for s-wave
     if l === 0
-        μ = 0.09 
-        @. Vs += 4.8*0.963*exp(-μ*rs*rs)
+        @. Vs += V_gaus*exp(-μ_gaus*rs*rs)
     end
     
     # centrifugal part
@@ -84,7 +82,7 @@ function make_spbases(param)
     
     p = sortperm(spEs[1:nbases])
     
-    spbases = SingleParticleBases(nbases, ψs[:,p], spEs[p], qnums[p])
+    SingleParticleBases(nbases, ψs[:,p], spEs[p], qnums[p])
 end
 
 

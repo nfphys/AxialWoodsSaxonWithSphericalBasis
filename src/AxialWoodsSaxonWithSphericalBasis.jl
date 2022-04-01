@@ -24,12 +24,13 @@ export PhysicalParam, calc_MEs_ang
 @with_kw struct PhysicalParam{T} @deftype Float64
     ħc = 197.
     mc² = 938.
-    M = ħc^2/2mc²
     
     # particle number of the core nucleus
     Z::Int64 = 6; @assert iseven(Z) 
     N::Int64 = 14; @assert iseven(N) 
     A::Int64 = Z + N; @assert A === Z + N
+
+    M = ħc^2/2mc²*(1 + 1/A)
 
     # radial mesh
     Nr::Int64 = 100
@@ -38,13 +39,13 @@ export PhysicalParam, calc_MEs_ang
     Jmax::Int64 = 6
     
     # parameters of Woods-Saxon potential
-    V₀ = -38.76*0.963 # [MeV]
-    V₁ = -25.63*0.963
+    V₀ = -38.76 # [MeV]
+    V₁ = -25.63/1.25^2
     r₀ = 1.25 # [fm]
     R₀ = r₀*A^(1/3) # [fm]
     a = 0.65 # [fm]
-    #κ = 0.44
-    #Lmax_WS::Int64 = 10 
+    V_gaus = 4.66
+    μ_gaus = 0.09
     
     # model space
     Emax = 5 # [MeV]
