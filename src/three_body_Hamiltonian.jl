@@ -163,7 +163,7 @@ function make_three_body_Hamiltonian(param, spstates, β, Λ, Π)
 
     # calculate the size of three-body Hamiltonian
     dim = 0
-    ns_2p = zeros(Int64, 2nstates, 2nstates)
+    ns_2p = zeros(Int64, 2, 2nstates*2nstates)
     for n₂ in 1:2nstates 
         i₂ = cld(n₂, 2)
         if occ[i₂] == 1.0
@@ -195,104 +195,41 @@ function make_three_body_Hamiltonian(param, spstates, β, Λ, Π)
                 continue 
             end
             dim += 1
-            ns_2p[n₁, n₂] = dim
-
+            #ns_2p[n₁, n₂] = dim
+            ns_2p[1,dim] = n₁
+            ns_2p[2,dim] = n₂
         end
     end
-    @show Emax, lmax, nstates
+    @show Emax, lmax, nstates, nthreads()
     @show Λ, Π, dim
     
     Hmat_3body = zeros(Float64, dim, dim, nthreads())
 
     prog = Progress(div(dim*(dim+1), 2), 1, "Making three-body Hamiltonian...")
 
-    #n₃₄ = 0
-    for n₄ in 1:2nstates
+    @threads for n₃₄ in 1:dim
+        n₃ = ns_2p[1,n₃₄]
+        n₄ = ns_2p[2,n₃₄]
+
+        i₃ = cld(n₃, 2)
         i₄ = cld(n₄, 2)
-        if occ[i₄] == 1.0
-            continue 
-        end
+        Hmat_3body[n₃₄, n₃₄, threadid()] += spEs[i₃] + spEs[i₄]
 
-        spE₄ = spEs[i₄]
-        Λ₄ = qnums[i₄].Λ
-        Π₄ = qnums[i₄].Π
-        if iseven(n₄)
-            Λ₄ = -Λ₄
-        end
+        for n₁₂ in 1:n₃₄
+            n₁ = ns_2p[1,n₁₂]
+            n₂ = ns_2p[2,n₁₂]
 
-        for n₃ in 1:n₄-1 # n₃ < n₄
-            i₃ = cld(n₃, 2)
-            if occ[i₃] == 1.0
-                continue 
-            end
+            Hmat_3body[n₁₂, n₃₄, threadid()] += 
+            calc_Vnn_matrix_element(param, spstates, β, n₁, n₂, n₃, n₄)
 
-            spE₃ = spEs[i₃]
-            Λ₃ = qnums[i₃].Λ
-            Π₃ = qnums[i₃].Π
-            if iseven(n₃)
-                Λ₃ = -Λ₃
-            end
-
-            if Λ ≠ Λ₃ + Λ₄ || Π ≠ Π₃*Π₄ || spE₃ + spE₄ > Emax 
-                continue 
-            end
-            #n₃₄ += 1
-            n₃₄ = ns_2p[n₃, n₄]
-
-            Hmat_3body[n₃₄, n₃₄, threadid()] += spEs[i₃] + spEs[i₄]
-
-            #n₁₂ = 0
-            for n₂ in 1:2nstates 
-                i₂ = cld(n₂, 2)
-                if occ[i₂] == 1.0
-                    continue 
-                end 
-
-                spE₂ = spEs[i₂]
-                Λ₂ = qnums[i₂].Λ
-                Π₂ = qnums[i₂].Π
-                if iseven(n₂)
-                    Λ₂ = -Λ₂
-                end
-
-
-                for n₁ in 1:n₂-1 # n₁ < n₂
-                    i₁ = cld(n₁, 2)
-                    if occ[i₁] == 1.0
-                        continue
-                    end
-
-                    spE₁ = spEs[i₁]
-                    Λ₁ = qnums[i₁].Λ
-                    Π₁ = qnums[i₁].Π
-                    if iseven(n₁)
-                        Λ₁ = -Λ₁
-                    end
-
-                    if Λ ≠ Λ₁ + Λ₂ || Π ≠ Π₁*Π₂ || spE₁ + spE₂ > Emax
-                        continue 
-                    end
-                    #n₁₂ += 1
-                    n₁₂ = ns_2p[n₁,n₂]
-
-                    if n₁₂ > n₃₄ # n₁₂ ≤ n₃₄
-                        continue 
-                    end
-
-                    Hmat_3body[n₁₂, n₃₄, threadid()] += 
-                    calc_Vnn_matrix_element(param, spstates, β, n₁, n₂, n₃, n₄)
-
-                    # show progress
-                    next!(prog)
-                end
-            end
+            # show progress
+            next!(prog)
         end
     end
 
     for id in 2:nthreads()
         @views @. Hmat_3body[:,:,1] += Hmat_3body[:,:,id]
     end
-    println("")
 
     return Symmetric(Hmat_3body[:,:,1])
 end
@@ -301,8 +238,6 @@ function test_make_three_body_Hamiltonian(param; β=0.0, Λ=0, Π=1, howmany=1)
     spbases = make_spbases(param)
     spstates = calc_single_particle_states(param, spbases, β)
     calc_occ!(spstates, param)
-
-    #show_spstates(spstates)
 
     Hmat_3body = make_three_body_Hamiltonian(param, spstates, β, Λ, Π)
 

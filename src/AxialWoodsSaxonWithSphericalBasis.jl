@@ -48,7 +48,7 @@ export PhysicalParam, calc_MEs_ang
     Λmax::Int64 = 2lmax+1; @assert isodd(Λmax)
 
     # radial mesh
-    Nr::Int64 = 40
+    Nr::Int64 = 60
     Δr = 0.5
     rs::T = range(Δr, Nr*Δr, length=Nr)
     ir_matching::Int64 = floor(Int, R₀/Δr)
