@@ -9,7 +9,7 @@ function calc_Vnn_matrix_element(param, spstates, β, n₁, n₂, n₃, n₄)
     @unpack nstates, ψs, qnums = spstates 
 
     Vnn = zeros(Float64, Nr)
-    @. Vnn = (v₀_nn + v_rho/(1 + exp((rs - R_rho)/a_rho))) * (1 + 6β^2)
+    @. Vnn = v₀_nn + v_rho/(1 + exp((rs - R_rho)/a_rho))
 
     Vnn2 = zeros(Float64, Nr) 
     @. Vnn2 = β*(R_rho/a_rho)*v_rho*exp((rs - R_rho)/a_rho)/(1 + exp((rs - R_rho)/a_rho))^2
@@ -177,7 +177,6 @@ function make_three_body_Hamiltonian(param, spstates, β, Λ, Π)
             Λ₂ = -Λ₂
         end
 
-
         for n₁ in 1:n₂-1 # n₁ < n₂
             i₁ = cld(n₁, 2)
             if occ[i₁] == 1.0
@@ -195,7 +194,6 @@ function make_three_body_Hamiltonian(param, spstates, β, Λ, Π)
                 continue 
             end
             dim += 1
-            #ns_2p[n₁, n₂] = dim
             ns_2p[1,dim] = n₁
             ns_2p[2,dim] = n₂
         end
@@ -219,8 +217,7 @@ function make_three_body_Hamiltonian(param, spstates, β, Λ, Π)
             n₁ = ns_2p[1,n₁₂]
             n₂ = ns_2p[2,n₁₂]
 
-            Hmat_3body[n₁₂, n₃₄, threadid()] += 
-            calc_Vnn_matrix_element(param, spstates, β, n₁, n₂, n₃, n₄)
+            Hmat_3body[n₁₂, n₃₄, threadid()] += calc_Vnn_matrix_element(param, spstates, β, n₁, n₂, n₃, n₄)
 
             # show progress
             next!(prog)

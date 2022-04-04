@@ -197,7 +197,7 @@ end
 
 
 
-function plot_nilsson_diagram(param; β_max=0.4, β_min=-0.4, Δβ=0.05)
+function plot_nilsson_diagram(param; β_max=0.5, β_min=-0.5, Δβ=0.05, ylim=(-2,0.5))
     @unpack Z, N, Λmax = param
 
     spbases = make_spbases(param)
@@ -208,7 +208,7 @@ function plot_nilsson_diagram(param; β_max=0.4, β_min=-0.4, Δβ=0.05)
 
     spEss = zeros(Float64, nbases, Nβ)
 
-    p = plot(ylim=(-25,5), legend=false, 
+    p = plot(xlim=(β_min, β_max), ylim=ylim, legend=false, 
     xlabel="β", ylabel="single-particle energy [MeV]", 
     title="nilsson diagram for Z=$Z, N=$N")
 

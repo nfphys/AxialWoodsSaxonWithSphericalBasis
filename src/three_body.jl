@@ -196,6 +196,7 @@ function test_calc_BE1_strength(param; β=0.0, howmany=50, Γ=0.2, figname="test
     E_gs = Es_gs[1]
     coeff_gs = coeffs_gs[1]
     @show E_gs
+    println("")
 
     Es = range(0, 5.0, step=0.01)
     fs = zeros(Float64, length(Es))
@@ -208,6 +209,7 @@ function test_calc_BE1_strength(param; β=0.0, howmany=50, Γ=0.2, figname="test
         @time Es_excited, coeffs_excited, info_excited = 
         eigsolve(Hmat_3body, howmany, :SR, eltype(Hmat_3body); krylovdim=100)
         @show Es_excited[1:2]
+        println("")
 
         #println("")
         #@show info_excited
