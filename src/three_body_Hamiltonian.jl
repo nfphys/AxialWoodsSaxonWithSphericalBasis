@@ -9,7 +9,7 @@ function calc_Vnn_matrix_element(param, spstates, β, n₁, n₂, n₃, n₄)
     @unpack nstates, ψs, qnums = spstates 
 
     Vnn = zeros(Float64, Nr)
-    @. Vnn = v₀_nn + v_rho/(1 + exp((rs - R_rho)/a_rho))
+    @. Vnn = (v₀_nn + v_rho/(1 + exp((rs - R_rho)/a_rho))) * (1 + 6β^2)
 
     Vnn2 = zeros(Float64, Nr) 
     @. Vnn2 = β*(R_rho/a_rho)*v_rho*exp((rs - R_rho)/a_rho)/(1 + exp((rs - R_rho)/a_rho))^2
@@ -158,13 +158,12 @@ function make_three_body_Hamiltonian(param, spstates, β, Λ, Π)
     @assert Π === +1 || Π === -1 
     
     @unpack Nr, rs, Δr, Emax, lmax = param
-    num_lj = 2lmax+1
 
     @unpack nstates, ψs, spEs, qnums, occ = spstates 
-    #show_spstates(spstates)
 
     # calculate the size of three-body Hamiltonian
     dim = 0
+    ns_2p = zeros(Int64, 2nstates, 2nstates)
     for n₂ in 1:2nstates 
         i₂ = cld(n₂, 2)
         if occ[i₂] == 1.0
@@ -196,17 +195,18 @@ function make_three_body_Hamiltonian(param, spstates, β, Λ, Π)
                 continue 
             end
             dim += 1
+            ns_2p[n₁, n₂] = dim
 
         end
     end
     @show Emax, lmax, nstates
     @show Λ, Π, dim
     
-    Hmat_3body = zeros(Float64, dim, dim)
+    Hmat_3body = zeros(Float64, dim, dim, nthreads())
 
     prog = Progress(div(dim*(dim+1), 2), 1, "Making three-body Hamiltonian...")
 
-    n₃₄ = 0
+    #n₃₄ = 0
     for n₄ in 1:2nstates
         i₄ = cld(n₄, 2)
         if occ[i₄] == 1.0
@@ -236,11 +236,12 @@ function make_three_body_Hamiltonian(param, spstates, β, Λ, Π)
             if Λ ≠ Λ₃ + Λ₄ || Π ≠ Π₃*Π₄ || spE₃ + spE₄ > Emax 
                 continue 
             end
-            n₃₄ += 1
+            #n₃₄ += 1
+            n₃₄ = ns_2p[n₃, n₄]
 
-            Hmat_3body[n₃₄, n₃₄] += spEs[i₃] + spEs[i₄]
+            Hmat_3body[n₃₄, n₃₄, threadid()] += spEs[i₃] + spEs[i₄]
 
-            n₁₂ = 0
+            #n₁₂ = 0
             for n₂ in 1:2nstates 
                 i₂ = cld(n₂, 2)
                 if occ[i₂] == 1.0
@@ -271,25 +272,29 @@ function make_three_body_Hamiltonian(param, spstates, β, Λ, Π)
                     if Λ ≠ Λ₁ + Λ₂ || Π ≠ Π₁*Π₂ || spE₁ + spE₂ > Emax
                         continue 
                     end
-                    n₁₂ += 1
+                    #n₁₂ += 1
+                    n₁₂ = ns_2p[n₁,n₂]
 
                     if n₁₂ > n₃₄ # n₁₂ ≤ n₃₄
                         continue 
                     end
 
-                    Hmat_3body[n₁₂, n₃₄] += 
+                    Hmat_3body[n₁₂, n₃₄, threadid()] += 
                     calc_Vnn_matrix_element(param, spstates, β, n₁, n₂, n₃, n₄)
 
                     # show progress
                     next!(prog)
-
                 end
             end
         end
     end
+
+    for id in 2:nthreads()
+        @views @. Hmat_3body[:,:,1] += Hmat_3body[:,:,id]
+    end
     println("")
 
-    return Symmetric(Hmat_3body)
+    return Symmetric(Hmat_3body[:,:,1])
 end
 
 function test_make_three_body_Hamiltonian(param; β=0.0, Λ=0, Π=1, howmany=1)
@@ -310,7 +315,8 @@ end
 
 
 function plot_ground_state_energy(param; β_max=0.2, β_min=-0.2, Δβ=0.02)
-    @unpack Z, N, Emax, lmax, Λmax = param
+    @unpack Z, N, Emax, lmax, Λmax, rs = param
+    rmax = rs[end]
 
     spbases = make_spbases(param)
     @unpack nbases = spbases
@@ -333,9 +339,9 @@ function plot_ground_state_energy(param; β_max=0.2, β_min=-0.2, Δβ=0.02)
         Es, coeffs, info = eigsolve(Hmat_3body, 1, :SR, eltype(Hmat_3body))
         Es_gs[iβ] = Es[1]
     end
-    p = plot(ylim=(-1, 0), legend=false, 
+    p = plot(ylim=(-0.5, 0.5), legend=false, 
     xlabel="β", ylabel="ground-state energy [MeV]", 
-    title="Z=$Z  N=$N  Emax=$(Emax)[MeV]  lmax=$(lmax)")
+    title="Z=$Z  N=$N  Emax=$(Emax)MeV  lmax=$(lmax)  rmax=$(rmax)fm")
     plot!(p, βs, Es_gs)
     display(p)
 end

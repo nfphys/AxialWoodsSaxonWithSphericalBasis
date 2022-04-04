@@ -7,6 +7,7 @@ using Parameters
 using Base.Threads
 using KrylovKit
 using ProgressMeter
+using Roots
 
 include("./basis.jl")
 include("./angular_momentum.jl")
@@ -31,12 +32,6 @@ export PhysicalParam, calc_MEs_ang
     A::Int64 = Z + N; @assert A === Z + N
 
     M = ħc^2/2mc²*(1 + 1/A)
-
-    # radial mesh
-    Nr::Int64 = 100
-    Δr = 0.2
-    rs::T = range(Δr, Nr*Δr, length=Nr)
-    Jmax::Int64 = 6
     
     # parameters of Woods-Saxon potential
     V₀ = -38.76 # [MeV]
@@ -51,6 +46,13 @@ export PhysicalParam, calc_MEs_ang
     Emax = 5 # [MeV]
     lmax::Int64 = 5
     Λmax::Int64 = 2lmax+1; @assert isodd(Λmax)
+
+    # radial mesh
+    Nr::Int64 = 40
+    Δr = 0.5
+    rs::T = range(Δr, Nr*Δr, length=Nr)
+    ir_matching::Int64 = floor(Int, R₀/Δr)
+    Jmax::Int64 = 6
 
     # parameters of neutron-neutron interaction 
     a_nn = -15.0 # [fm]

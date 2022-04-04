@@ -179,7 +179,8 @@ function calc_BE1_strength(param, spstates, coeff_gs, coeff_excited, M)
 end
 
 function test_calc_BE1_strength(param; β=0.0, howmany=50, Γ=0.2, figname="test")
-    @unpack Emax, lmax = param 
+    @unpack Emax, lmax, rs = param 
+    rmax = rs[end]
 
     spbases = make_spbases(param)
     spstates = calc_single_particle_states(param, spbases, β)
@@ -199,7 +200,7 @@ function test_calc_BE1_strength(param; β=0.0, howmany=50, Γ=0.2, figname="test
     Es = range(0, 5.0, step=0.01)
     fs = zeros(Float64, length(Es))
     p = plot(xlabel="E [MeV]", ylabel="B(E1)", 
-    title="Emax=$(Emax)[MeV]  lmax=$(lmax)  β=$β  Γ=$Γ[MeV]", ylim=(0,5))
+    title="Emax=$(Emax)MeV  lmax=$(lmax)  rmax=$(rmax)fm  β=$β  Γ=$(Γ)MeV", ylim=(0,10))
     for M in 0:1
         Λ_excited = 2M
         Π_excited = -1 
