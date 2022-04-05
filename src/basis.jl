@@ -72,7 +72,7 @@ function integrate_SchEq!(ys, As, param, Vs, E, qnum)
     @views normalize!(ys[:,1], rs)
 
     # inward integration 
-    ys[Nr,2] = Δr 
+    ys[Nr,2] = Δr  
     G₀ = 0.0 # ir = Nr+1
     G₁ = As[Nr]*ys[Nr,2] # ir = Nr
     for ir in Nr: -1: ir_matching
